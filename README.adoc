@@ -1,0 +1,48 @@
+[source,java]
+```
+import lombok.extern.slf4j.Slf4j;
+import org.testcontainers.containers.BindMode;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.MountableFile;
+
+@Slf4j
+public class SFTPContainer extends GenericContainer {
+
+  private static final String IMAGE_VERSION = "vickyronnen/sftp:latest";
+  private static final int PORT = 22;
+  private static SFTPContainer container;
+
+  private SFTPContainer() {
+    super(IMAGE_VERSION);
+  }
+
+  public static SFTPContainer getInstance() {
+    if (container == null) {
+      container = new SFTPContainer();
+      MountableFile users = MountableFile.forClasspathResource("users");
+      container.withExposedPorts(PORT)
+          .withCopyFileToContainer(users, "/tmp/users")
+          .withFileSystemBind("/tmp/sftp", "/tmp/sftp", BindMode.READ_WRITE)
+          .withReuse(true)
+      ;
+    }
+    return container;
+  }
+
+  @Override
+  public void start() {
+    super.start();
+  }
+
+  @Override
+  public void stop() {
+    super.stop();
+  }
+}
+```
+
+users is a file with contents:
+[source,text]
+test:test:upload:download
+
+The container will have a user _test_ with password _test_ and directories _/home/test/upload_ and _/home/test/download_

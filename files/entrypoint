@@ -1,0 +1,40 @@
+#!/bin/bash
+set -Eeo pipefail
+#set -x
+
+trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+
+function log() {
+  echo "[$0] $*" >&2
+}
+
+if [ ! -z "$SKIP_ENTRYPOINT" ]; then
+  echo "skipping execution of $0"
+  exit 0
+fi
+
+if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
+  log Generate host keys
+  ssh-keygen -A
+fi
+
+# Create users only on first run
+if [ -f /tmp/users ] && [ ! -f "/tmp/users.created" ]; then
+  for i in $(</tmp/users); do
+    IFS=':' read -ra array <<<"$i"
+    log "creating user ${array[0]}"
+    useradd -m ${array[0]}
+    log "setting password for user ${array[0]} to ${array[1]}"
+    echo "${array[0]}:${array[1]}" | chpasswd
+    log "creating directory /home/${array[0]}/${array[2]}"
+    mkdir -p /home/${array[0]}/${array[2]}
+    chown ${array[0]}:${array[0]} /home/${array[0]}/${array[2]}
+    log "creating directory /home/${array[0]}/${array[3]}"
+    mkdir -p /home/${array[0]}/${array[3]}
+    chown ${array[0]}:${array[0]} /home/${array[0]}/${array[3]}
+    touch /tmp/users.created
+  done
+fi
+
+log Start sftp server
+exec /usr/sbin/sshd -D -e
